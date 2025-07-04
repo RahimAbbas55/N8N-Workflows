@@ -1,0 +1,339 @@
+{
+  "name": "Email Monitoring",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {
+          "q": "subject:\"Refund Request Form\""
+        }
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -260,
+        0
+      ],
+      "id": "6be4a53b-a4fc-4afc-8ae5-e5da71818a53",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "9eyoV7c1XkUGjKbA",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {\n  emailText: $json[\"textPlain\"] || $json[\"textHtml\"],\n  attachments: $json[\"attachments\"] || []\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "492fd437-3c39-491c-8fbc-8278cc0e71ac",
+      "name": "Extract Email Content"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a data extraction assistant. Extract the following information from the email content provided. If any field is not found, return \"Not provided\". Return ONLY valid JSON format with no additional text or explanations.\n\nRequired fields:\n- name\n- phone\n- email\n- address\n- pickup_address\n- delivery_address\n- payment_method\n- amount_charged\n- payment_person_name\n- transaction_date\n- refund_reason\n- todays_date\n- has_attachments\n\nExtract data from this email:\n{{ $('Gmail Trigger').item.json.snippet }}\n"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        260,
+        0
+      ],
+      "id": "37dbe4b4-c4df-4a39-b595-0b4b12d38954",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "id": "XaLPhzKEYA2EErFx",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "try {\n  // Get the raw OpenAI response (as a string with ```json ... ```)\n  const raw = $input.first().json.message.content;\n\n  // Clean it: remove ```json and ``` using regex\n  const cleaned = raw.replace(/```json|```/g, '').trim();\n\n  // Parse it as real JSON\n  const parsed = JSON.parse(cleaned);\n\n  return [{\n    json: parsed\n  }];\n\n} catch (error) {\n  return [{\n    json: {\n      error: \"Failed to parse OpenAI response\",\n      rawResponse: $input.first().json.message.content,\n      errorDetails: error.message,\n      success: false\n    }\n  }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        0
+      ],
+      "id": "120523d7-6660-4155-9db0-7e24a2e88cb5",
+      "name": "JSON Parser"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "15wfKCGt1PbRKUek_G-2ahrMR-R8GxNMOcCozQyBNmXM",
+          "mode": "list",
+          "cachedResultName": "Email Monitoring sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/15wfKCGt1PbRKUek_G-2ahrMR-R8GxNMOcCozQyBNmXM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/15wfKCGt1PbRKUek_G-2ahrMR-R8GxNMOcCozQyBNmXM/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "name": "={{ $json.name }}",
+            "phone": "={{ $json.phone.toJsonString() }}",
+            "email": "={{ $json.email }}",
+            "address": "={{ $json.address }}",
+            "pickup_address": "={{ $json.pickup_address }}",
+            "delivery_address": "={{ $json.delivery_address }}",
+            "amount_charged": "={{ $json.amount_charged }}",
+            "payment_person_name": "={{ $json.payment_person_name }}",
+            "transaction_date": "={{ $json.transaction_date }}",
+            "refund_reason": "={{ $json.refund_reason }}",
+            "todays_date": "={{ $json.todays_date }}",
+            "has_attachments": "={{ $json.has_attachments }}",
+            "payment_method": "={{ $json.payment_method }}"
+          },
+          "matchingColumns": [
+            "name"
+          ],
+          "schema": [
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "address",
+              "displayName": "address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "pickup_address",
+              "displayName": "pickup_address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "delivery_address",
+              "displayName": "delivery_address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "amount_charged",
+              "displayName": "amount_charged",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "payment_person_name",
+              "displayName": "payment_person_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "transaction_date",
+              "displayName": "transaction_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "refund_reason",
+              "displayName": "refund_reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "todays_date",
+              "displayName": "todays_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "has_attachments",
+              "displayName": "has_attachments",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "payment_method",
+              "displayName": "payment_method",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        880,
+        0
+      ],
+      "id": "98098dca-0d0d-4078-9992-aca012a4abf1",
+      "name": "Append or update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "dAaKHxjorOPIWww4",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract Email Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Email Content": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "JSON Parser",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JSON Parser": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "54cb790d-e397-446d-a969-26ed7d45fa7f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "482701588add25f70cb7156df955cedfd9ccd14627e1eace056aa0d191376624"
+  },
+  "id": "NaUcsSCJC4B3ePpB",
+  "tags": []
+}
